@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Deep Learning Lab — BTech Semester 4</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg:        #08090d;
+    --surface:   #0f1118;
+    --card:      #13161f;
+    --border:    #1e2235;
+    --accent1:   #5c6ef8;
+    --accent2:   #a259f7;
+    --accent3:   #38d9a9;
+    --accent4:   #f7935e;
+    --text:      #e8eaf6;
+    --muted:     #6b7280;
+    --tag-bg:    rgba(92,110,248,.13);
+    --tag-text:  #8b9df7;
+    --glow1: rgba(92,110,248,.18);
+    --glow2: rgba(162,89,247,.18);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Sora', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── noise texture overlay ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 0;
+  }
+
+  /* ── animated grid background ── */
+  .grid-bg {
+    position: fixed; inset: 0; z-index: 0;
+    background-image:
+      linear-gradient(rgba(92,110,248,.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(92,110,248,.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    animation: gridPulse 8s ease-in-out infinite;
+  }
+  @keyframes gridPulse {
+    0%, 100% { opacity: .5; }
+    50%       { opacity: 1; }
+  }
+
+  /* ── glowing orbs ── */
+  .orb {
+    position: fixed; border-radius: 50%;
+    filter: blur(90px); pointer-events: none; z-index: 0;
+    animation: drift 12s ease-in-out infinite;
+  }
+  .orb-1 { width: 500px; height: 500px; background: var(--glow1); top: -150px; left: -100px; animation-delay: 0s; }
+  .orb-2 { width: 400px; height: 400px; background: var(--glow2); bottom: -100px; right: -80px; animation-delay: -6s; }
+  @keyframes drift {
+    0%, 100% { transform: translate(0,0); }
+    50%       { transform: translate(40px, 30px); }
+  }
+
+  /* ── layout ── */
+  .wrapper { position: relative; z-index: 1; max-width: 1160px; margin: 0 auto; padding: 0 28px; }
+
+  /* ── header ── */
+  header {
+    padding: 72px 0 48px;
+    text-align: center;
+    position: relative;
+  }
+
+  .institute-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 16px;
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    background: rgba(92,110,248,.07);
+    font-family: 'Space Mono', monospace;
+    font-size: .72rem;
+    color: var(--accent1);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    margin-bottom: 28px;
+    animation: fadeSlideDown .6s ease both;
+  }
+  .institute-badge span.dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent3);
+    animation: blink 1.8s ease-in-out infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.25} }
+
+  h1 {
+    font-size: clamp(2.2rem, 5vw, 3.8rem);
+    font-weight: 800;
+    line-height: 1.08;
+    letter-spacing: -.03em;
+    animation: fadeSlideDown .7s .1s ease both;
+  }
+  h1 .grad {
+    background: linear-gradient(120deg, var(--accent1), var(--accent2), var(--accent3));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .subtitle {
+    margin-top: 14px;
+    font-size: 1.05rem;
+    color: var(--muted);
+    font-weight: 300;
+    animation: fadeSlideDown .7s .2s ease both;
+  }
+
+  .meta-row {
+    display: flex; justify-content: center; align-items: center;
+    gap: 24px; flex-wrap: wrap;
+    margin-top: 28px;
+    animation: fadeSlideDown .7s .3s ease both;
+  }
+  .meta-pill {
+    display: flex; align-items: center; gap: 7px;
+    padding: 7px 16px;
+    border-radius: 100px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    font-size: .82rem;
+    color: var(--muted);
+  }
+  .meta-pill svg { flex-shrink: 0; }
+
+  /* ── divider ── */
+  .divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border), transparent);
+    margin: 0 0 48px;
+    animation: fadeIn .8s .4s ease both;
+  }
+
+  /* ── part headings ── */
+  .part-heading {
+    display: flex; align-items: center; gap: 16px;
+    margin-bottom: 22px;
+    animation: fadeIn .6s ease both;
+  }
+  .part-num {
+    font-family: 'Space Mono', monospace;
+    font-size: .72rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--accent1);
+    padding: 5px 12px;
+    border: 1px solid rgba(92,110,248,.35);
+    border-radius: 6px;
+    background: rgba(92,110,248,.07);
+    white-space: nowrap;
+  }
+  .part-title {
+    font-size: 1.18rem;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .part-line {
+    flex: 1; height: 1px;
+    background: linear-gradient(90deg, var(--border), transparent);
+  }
+
+  /* ── grid ── */
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+    gap: 18px;
+    margin-bottom: 52px;
+  }
+
+  /* ── card ── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 26px 26px 22px;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    text-decoration: none;
+    display: block;
+    transition: transform .22s cubic-bezier(.34,1.56,.64,1),
+                border-color .22s ease,
+                box-shadow .22s ease;
+    animation: cardIn .5s ease both;
+  }
+  .card:hover {
+    transform: translateY(-5px) scale(1.012);
+    border-color: var(--card-accent, var(--accent1));
+    box-shadow: 0 16px 48px rgba(0,0,0,.45),
+                0 0 0 1px var(--card-accent, var(--accent1)),
+                0 0 32px var(--card-glow, var(--glow1));
+  }
+  .card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--card-accent, var(--accent1)), transparent);
+    opacity: 0;
+    transition: opacity .22s;
+  }
+  .card:hover::before { opacity: 1; }
+
+  /* accent classes applied by JS */
+  .card.ac-blue  { --card-accent: #5c6ef8; --card-glow: rgba(92,110,248,.15); }
+  .card.ac-purple{ --card-accent: #a259f7; --card-glow: rgba(162,89,247,.15); }
+  .card.ac-teal  { --card-accent: #38d9a9; --card-glow: rgba(56,217,169,.15); }
+  .card.ac-orange{ --card-accent: #f7935e; --card-glow: rgba(247,147,94,.15); }
+
+  /* number badge */
+  .card-num {
+    font-family: 'Space Mono', monospace;
+    font-size: .68rem;
+    font-weight: 700;
+    letter-spacing: .1em;
+    color: var(--card-accent, var(--accent1));
+    margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card-num::after {
+    content: '';
+    flex: 1; height: 1px;
+    background: linear-gradient(90deg, var(--card-accent, var(--accent1)), transparent);
+    opacity: .4;
+  }
+
+  .card-title {
+    font-size: 1.06rem;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.35;
+    margin-bottom: 9px;
+  }
+
+  .card-desc {
+    font-size: .82rem;
+    color: var(--muted);
+    line-height: 1.6;
+    margin-bottom: 16px;
+  }
+
+  /* tags */
+  .tags { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 20px; }
+  .tag {
+    font-family: 'Space Mono', monospace;
+    font-size: .65rem;
+    padding: 3px 9px;
+    border-radius: 4px;
+    background: var(--tag-bg);
+    color: var(--tag-text);
+    border: 1px solid rgba(92,110,248,.18);
+    letter-spacing: .03em;
+  }
+  .tag.ds  { background: rgba(56,217,169,.1); color: #5ef5c8; border-color: rgba(56,217,169,.2); }
+  .tag.co  { background: rgba(247,147,94,.1); color: #fbb27a; border-color: rgba(247,147,94,.2); }
+
+  /* open button */
+  .open-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 9px 18px;
+    border-radius: 8px;
+    background: rgba(92,110,248,.1);
+    border: 1px solid rgba(92,110,248,.25);
+    color: var(--card-accent, var(--accent1));
+    font-size: .8rem;
+    font-weight: 600;
+    font-family: 'Sora', sans-serif;
+    transition: background .18s, border-color .18s, transform .18s;
+    text-decoration: none;
+  }
+  .card:hover .open-btn {
+    background: rgba(92,110,248,.2);
+    border-color: var(--card-accent, var(--accent1));
+    transform: translateX(3px);
+  }
+  .open-btn svg { transition: transform .18s; }
+  .card:hover .open-btn svg { transform: translateX(3px); }
+
+  /* corner icon */
+  .card-icon {
+    position: absolute; top: 22px; right: 22px;
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    background: rgba(92,110,248,.1);
+    border: 1px solid rgba(92,110,248,.15);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem;
+    transition: transform .22s;
+  }
+  .card:hover .card-icon { transform: rotate(-8deg) scale(1.12); }
+
+  /* ── stats bar ── */
+  .stats-bar {
+    display: flex; flex-wrap: wrap; gap: 12px;
+    justify-content: center;
+    margin: 0 0 60px;
+    animation: fadeIn .8s .5s ease both;
+  }
+  .stat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 28px;
+    text-align: center;
+    flex: 1; min-width: 130px;
+  }
+  .stat-val {
+    font-family: 'Space Mono', monospace;
+    font-size: 1.75rem;
+    font-weight: 700;
+    background: linear-gradient(90deg, var(--accent1), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .stat-label { font-size: .78rem; color: var(--muted); margin-top: 4px; }
+
+  /* ── footer ── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 32px 0 40px;
+    text-align: center;
+  }
+  .footer-note {
+    font-size: .8rem; color: var(--muted); line-height: 1.8;
+  }
+  .footer-note span { color: var(--accent1); }
+
+  /* ── instructions banner ── */
+  .instructions {
+    background: linear-gradient(135deg, rgba(92,110,248,.07), rgba(162,89,247,.07));
+    border: 1px solid rgba(92,110,248,.2);
+    border-radius: 12px;
+    padding: 18px 24px;
+    margin-bottom: 48px;
+    display: flex; align-items: flex-start; gap: 14px;
+    animation: fadeIn .8s .4s ease both;
+  }
+  .instructions-icon { font-size: 1.4rem; flex-shrink: 0; margin-top: 2px; }
+  .instructions-text { font-size: .85rem; color: var(--muted); line-height: 1.7; }
+  .instructions-text strong { color: var(--text); font-weight: 600; }
+  .instructions-text code {
+    font-family: 'Space Mono', monospace;
+    font-size: .78rem;
+    background: rgba(92,110,248,.12);
+    color: var(--accent1);
+    padding: 1px 6px;
+    border-radius: 4px;
+  }
+
+  /* ── keyframes ── */
+  @keyframes fadeSlideDown {
+    from { opacity:0; transform: translateY(-18px); }
+    to   { opacity:1; transform: translateY(0); }
+  }
+  @keyframes fadeIn {
+    from { opacity:0; }
+    to   { opacity:1; }
+  }
+  @keyframes cardIn {
+    from { opacity:0; transform: translateY(20px); }
+    to   { opacity:1; transform: translateY(0); }
+  }
+
+  /* stagger cards */
+  .card:nth-child(1) { animation-delay: .05s; }
+  .card:nth-child(2) { animation-delay: .10s; }
+  .card:nth-child(3) { animation-delay: .15s; }
+  .card:nth-child(4) { animation-delay: .20s; }
+
+  /* ── responsive ── */
+  @media (max-width: 600px) {
+    .cards-grid { grid-template-columns: 1fr; }
+    header { padding: 48px 0 32px; }
+    h1 { font-size: 2rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="grid-bg"></div>
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+
+<div class="wrapper">
+
+  <!-- ── HEADER ── -->
+  <header>
+    <div class="institute-badge">
+      <span class="dot"></span>
+      BTech Semester 4 &nbsp;·&nbsp; Department of Computer Science
+    </div>
+    <h1>Deep Learning<br><span class="grad">Lab Practicals</span></h1>
+    <p class="subtitle">10 hands-on notebooks covering neural networks, CNNs, RNNs, and modern DL applications</p>
+    <div class="meta-row">
+      <div class="meta-pill">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        10 Practicals
+      </div>
+      <div class="meta-pill">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Google Colab Ready
+      </div>
+      <div class="meta-pill">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        Python · TensorFlow · NumPy
+      </div>
+      <div class="meta-pill">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        CO1 – CO5 Mapped
+      </div>
+    </div>
+  </header>
+
+  <div class="divider"></div>
+
+  <!-- ── STATS ── -->
+  <div class="stats-bar">
+    <div class="stat"><div class="stat-val">10</div><div class="stat-label">Lab Notebooks</div></div>
+    <div class="stat"><div class="stat-val">4</div><div class="stat-label">Course Parts</div></div>
+    <div class="stat"><div class="stat-val">80+</div><div class="stat-label">Viva Questions</div></div>
+    <div class="stat"><div class="stat-val">5</div><div class="stat-label">Course Outcomes</div></div>
+    <div class="stat"><div class="stat-val">15+</div><div class="stat-label">Datasets Used</div></div>
+  </div>
+
+  <!-- ── HOW TO USE ── -->
+  <div class="instructions">
+    <div class="instructions-icon">💡</div>
+    <div class="instructions-text">
+      <strong>How to open these notebooks:</strong> Download any <code>.ipynb</code> file → go to
+      <strong>colab.research.google.com</strong> → click <strong>File → Upload notebook</strong> → select the file.
+      All notebooks include a built-in dataset fallback so they run immediately — no Kaggle account needed.
+      For real datasets, follow the <strong>Option A</strong> instructions inside each notebook.
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       PART 1 — Foundations & Optimization
+  ════════════════════════════════════════════ -->
+  <div class="part-heading">
+    <div class="part-num">Part 01</div>
+    <div class="part-title">Foundations &amp; Optimization</div>
+    <div class="part-line"></div>
+  </div>
+
+  <div class="cards-grid">
+
+    <!-- P1 -->
+    <a class="card ac-blue" href="https://github.com/aimlnielitropar/BTech-DL/blob/main/practical1_backpropagation.ipynb" download>
+      <div class="card-icon">🧮</div>
+      <div class="card-num">PRACTICAL 01</div>
+      <div class="card-title">The Math of Neural Networks</div>
+      <div class="card-desc">Implement Backpropagation from scratch using only NumPy. Solve the XOR problem and visualize the learned decision boundary.</div>
+      <div class="tags">
+        <span class="tag">NumPy Only</span>
+        <span class="tag">Backpropagation</span>
+        <span class="tag ds">XOR Dataset</span>
+        <span class="tag co">CO1</span>
+      </div>
+      <span class="open-btn">
+        Download Notebook
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      </span>
+    </a>
+
+    <!-- P2 -->
+    <a class="card ac-purple" href="https://github.com/aimlnielitropar/BTech-DL/blob/main/practical2_churn_mlp.ipynb" download>
+      <div class="card-icon">🏦</div>
+      <div class="card-num">PRACTICAL 02</div>
+      <div class="card-title">Deep MLP for Customer Churn Prediction</div>
+      <div class="card-desc">Build a 4-layer MLP for binary classification. Master one-hot encoding, feature scaling, and industry-standard evaluation metrics.</div>
+      <div class="tags">
+        <span class="tag">MLP</span>
+        <span class="tag">Precision / Recall / F1</span>
+        <span class="tag ds">Bank Churn Dataset</span>
+        <span class="tag co">CO1</span><span class="tag co">CO5</span>
+      </div>
+      <span class="open-btn">
+        Download Notebook
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      </span>
+    </a>
+
+    <!-- P3 -->
+    <a class="card ac-teal" href="https://github.com/aimlnielitropar/BTech-DL/blob/main/practical3_optimizer_showdown.ipynb" download>
+      <div class="card-icon">⚡</div>
+      <div class="card-num">PRACTICAL 03</div>
+      <div class="card-title">The Optimizer Showdown</div>
+      <div class="card-desc">Compare SGD, Momentum+Nesterov, and Adam on Fashion MNIST. Plot convergence curves and understand loss landscape geometry.</div>
+      <div class="tags">
+        <span class="tag">SGD · Momentum · Adam</span>
+        <span class="tag">Convergence Analysis</span>
+        <span class="tag ds">Fashion MNIST</span>
+        <span class="tag co">CO2</span>
+      </div>
+      <span class="open-btn">
+        Download Notebook
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      </span>
+    </a>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       PART 2 — Unsupervised Learning & Regularization
+  ════════════════════════════════════════════ -->
+  <div class="part-heading">
+    <div class="part-num">Part 02</div>
+    <div class="part-title">Unsupervised Learning &amp; Regularization</div>
+    <div class="part-line"></div>
+  </div>
+
+  <div class="cards-grid">
+
+    <!-- P4 -->
+    <a class="card ac-orange" href="https://github.com/aimlnielitropar/BTech-DL/blob/main/practical4_pca_vs_autoencoder.ipynb" download>
+      <div class="card-icon">🔬</div>
+      <div class="card-num">PRACTICAL 04</div>
+      <div class="card-title">PCA vs. Autoencoders</div>
+      <div class="card-desc">Compare linear (PCA) vs neural (Autoencoder) dimensionality reduction on MNIST. Visualize and compare 2D latent space cluster separability.</div>
+      <div class="tags">
+        <span class="tag">PCA</span>
+        <span class="tag">Undercomplete Autoencoder</span>
+        <span class="tag ds">MNIST</span>
+        <span class="tag co">CO2</span><span class="tag co">CO3</span>
+      </div>
+      <span class="open-btn">
+        Download Notebook
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      </span>
+    </a>
+
+    <!-- P5 -->
+    <a class="card ac-blue" href="https://github.com/aimlnielitropar/BTech-DL/blob/main/practical5_denoising_autoencoder.ipynb" download>
+      <div class="card-icon">🖼️</div>
+      <div class="card-num">PRACTICAL 05</div>
+      <div class="card-title">Denoising Autoencoders</div>
+      <div class="card-desc">Train a convolutional DAE to restore images corrupted by Gaussian noise. Evaluate with MSE and PSNR across multiple noise levels.</div>
+      <div class="tags">
+        <span class="tag">Conv Autoencoder</span>
+        <span class="tag">Gaussian Noise · PSNR</span>
+        <span class="tag ds">MNIST + Synthetic Noise</span>
+        <span class="tag co">CO3</span>
+      </div>
+      <span class="open-btn">
+        Download Notebook
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      </span>
+    </a>
+
+    <!-- P6 -->
+    <a class="card ac-purple" href="https://github.com/aimlnielitropar/BTech-DL/blob/main/practical6_regularization.ipynb" download>
+      <div class="card-icon">🛡️</div>
+      <div class="card-num">PRACTICAL 06</div>
+      <div class="card-title">Taming Overfitting</div>
+      <div class="card-desc">Apply Dropout, L2 regularization, Batch Normalization, and Early Stopping iteratively on CIFAR-10. Watch the overfit gap shrink at each step.</div>
+      <div class="tags">
+        <span class="tag">Dropout · L2 · BatchNorm</span>
+        <span class="tag">Bias–Variance Tradeoff</span>
+        <span class="tag ds">CIFAR-10 (small subset)</span>
+        <span class="tag co">CO3</span>
+      </div>
+      <span class="open-btn">
+        Download Notebook
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      </span>
+    </a>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       PART 3 — Deep Learning Models
+  ════════════════════════════════════════════ -->
+  <div class="part-heading">
+    <div class="part-num">Part 03</div>
+    <div class="part-title">Deep Learning Models</div>
+    <div class="part-line"></div>
+  </div>
+
+  <div class="cards-grid">
+
+    <!-- P7 -->
+    <a class="card ac-teal" href="https://github.com/aimlnielitropar/BTech-DL/blob/main/practical7_lenet_alexnet.ipynb" download>
+      <div class="card-icon">🏛️</div>
+      <div class="card-num">PRACTICAL 07</div>
+      <div class="card-title">LeNet-5 and AlexNet Architectures</div>
+      <div class="card-desc">Implement LeNet-5 (1998) and AlexNet (2012) layer by layer. Visualize feature maps, architecture diagrams, and parameter count comparison.</div>
+      <div class="tags">
+        <span class="tag">CNN Architectures</span>
+        <span class="tag">Feature Maps · Conv Filters</span>
+        <span class="tag ds">MNIST · CIFAR-10</span>
+        <span class="tag co">CO4</span>
+      </div>
+      <span class="open-btn">
+        Download Notebook
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      </span>
+    </a>
+
+    <!-- P8 -->
+    <a class="card ac-orange" href="https://github.com/aimlnielitropar/BTech-DL/blob/main/practical8_transfer_learning.ipynb" download>
+      <div class="card-icon">🔄</div>
+      <div class="card-num">PRACTICAL 08</div>
+      <div class="card-title">Transfer Learning with VGG16 / ResNet</div>
+      <div class="card-desc">Load pre-trained ImageNet models. Freeze backbone, fine-tune top layers, and classify medical X-ray images. Compare scratch vs transfer learning.</div>
+      <div class="tags">
+        <span class="tag">VGG16 · ResNet50</span>
+        <span class="tag">Feature Extraction · Fine-Tuning</span>
+        <span class="tag ds">Chest X-Ray (Pneumonia)</span>
+        <span class="tag co">CO4</span><span class="tag co">CO5</span>
+      </div>
+      <span class="open-btn">
+        Download Notebook
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      </span>
+    </a>
+
+    <!-- P9 -->
+    <a class="card ac-blue" href="https://github.com/aimlnielitropar/BTech-DL/blob/main/practical9_lstm_stock.ipynb" download>
+      <div class="card-icon">📈</div>
+      <div class="card-num">PRACTICAL 09</div>
+      <div class="card-title">Time Series with RNN vs LSTM</div>
+      <div class="card-desc">Predict stock prices using the Windowing method. Visualize LSTM gates, vanishing gradient problem, and compare RNN vs LSTM with MSE and RMSE.</div>
+      <div class="tags">
+        <span class="tag">LSTM · GRU · BPTT</span>
+        <span class="tag">Windowing · Forecasting</span>
+        <span class="tag ds">Google Stock Price</span>
+        <span class="tag co">CO4</span>
+      </div>
+      <span class="open-btn">
+        Download Notebook
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      </span>
+    </a>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       PART 4 — Applications & Attention
+  ════════════════════════════════════════════ -->
+  <div class="part-heading">
+    <div class="part-num">Part 04</div>
+    <div class="part-title">Applications &amp; Attention</div>
+    <div class="part-line"></div>
+  </div>
+
+  <div class="cards-grid">
+
+    <!-- P10 -->
+    <a class="card ac-purple" href="https://github.com/aimlnielitropar/BTech-DL/blob/main/practical10_image_captioning.ipynb" download>
+      <div class="card-icon">🖼️🔤</div>
+      <div class="card-num">PRACTICAL 10</div>
+      <div class="card-title">Image Captioning with Attention</div>
+      <div class="card-desc">Build a full Encoder-Decoder pipeline. InceptionV3 extracts image features; a GRU decoder with Bahdanau Attention generates captions word by word.</div>
+      <div class="tags">
+        <span class="tag">Encoder–Decoder</span>
+        <span class="tag">Bahdanau Attention</span>
+        <span class="tag">Teacher Forcing · Beam Search</span>
+        <span class="tag ds">Flickr8k</span>
+        <span class="tag co">CO3</span><span class="tag co">CO5</span>
+      </div>
+      <span class="open-btn">
+        Download Notebook
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      </span>
+    </a>
+
+  </div>
+
+  <!-- ── FOOTER ── -->
+  <footer>
+    <p class="footer-note">
+      Deep Learning Lab &nbsp;·&nbsp; BTech Semester 4 &nbsp;·&nbsp; <span>10 Practicals · 5 Modules</span><br/>
+      Notebooks built for <span>Google Colab</span> using TensorFlow / Keras &nbsp;·&nbsp;
+      Each notebook contains step-by-step explanations, references, and viva questions<br/>
+      <span style="color:var(--muted); font-size:.75rem; margin-top:6px; display:block;">
+        Keep all .ipynb files in the same folder as this HTML file for direct download links to work.
+      </span>
+    </p>
+  </footer>
+
+</div><!-- /wrapper -->
+
+<script>
+  // Stagger card animations per section on scroll
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.style.opacity = '1';
+        entry.target.style.transform = 'translateY(0)';
+      }
+    });
+  }, { threshold: 0.1 });
+
+  document.querySelectorAll('.card').forEach((card, i) => {
+    card.style.opacity = '0';
+    card.style.transform = 'translateY(24px)';
+    card.style.transition = `opacity .5s ${i * 0.07}s ease, transform .5s ${i * 0.07}s ease, box-shadow .22s ease, border-color .22s ease`;
+    observer.observe(card);
+  });
+
+  // Prevent download on right-click context menu for clean UX
+  document.querySelectorAll('.card').forEach(card => {
+    card.addEventListener('click', (e) => {
+      // Allow natural anchor download behavior
+    });
+  });
+</script>
+</body>
+</html>
